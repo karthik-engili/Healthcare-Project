@@ -1,7 +1,6 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from '../components/common/Navbar';
-import Footer from '../components/common/Footer';
 import FloatingVoiceAssistant from '../components/common/FloatingVoiceAssistant';
 import HealthcarePageBackground from '../components/common/HealthcarePageBackground';
 
@@ -29,7 +28,6 @@ const DashboardLayout = () => {
         </div>
       </HealthcarePageBackground>
       <FloatingVoiceAssistant />
-      <Footer />
     </div>
   );
 };
