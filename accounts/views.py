@@ -59,10 +59,14 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         partial = kwargs.pop('partial', True)
         instance = self.get_object()
 
-        # Sanitize data: convert empty string date_of_birth "" or "null" string to None
+        # Sanitize data: convert empty string date_of_birth, height_cm, weight_kg or "null" string to None
         data = request.data.copy()
         if 'date_of_birth' in data and (data['date_of_birth'] == '' or data['date_of_birth'] == 'null'):
             data['date_of_birth'] = None
+        if 'height_cm' in data and (data['height_cm'] == '' or data['height_cm'] == 'null'):
+            data['height_cm'] = None
+        if 'weight_kg' in data and (data['weight_kg'] == '' or data['weight_kg'] == 'null'):
+            data['weight_kg'] = None
 
         serializer = self.get_serializer(instance, data=data, partial=partial)
         if not serializer.is_valid():

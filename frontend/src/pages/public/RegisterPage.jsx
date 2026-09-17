@@ -5,7 +5,7 @@ import Card from '../../components/common/Card';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import Alert from '../../components/common/Alert';
-import { FaUser, FaEnvelope, FaLock, FaPhone, FaHeartbeat, FaCalendarAlt, FaLanguage, FaPhoneAlt } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaLock, FaPhone, FaHeartbeat, FaCalendarAlt, FaLanguage, FaPhoneAlt, FaMapMarkerAlt } from 'react-icons/fa';
 
 const RegisterPage = () => {
   const { registerUser, loading } = useAuth();
@@ -18,9 +18,10 @@ const RegisterPage = () => {
     last_name: '',
     email: '',
     phone: '',
-    date_of_birth: '1990-01-01',
+    date_of_birth: '',
     gender: 'Male',
-    language_preference: 'Hindi',
+    language_preference: 'English',
+    address: '',
     emergency_contact: '',
   });
 
@@ -165,6 +166,15 @@ const RegisterPage = () => {
               </div>
             </div>
 
+            {/* Address / Village */}
+            <Input
+              label="Village / Residence Address"
+              placeholder="e.g. Sundarpur Village, Dist. Varanasi"
+              icon={FaMapMarkerAlt}
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            />
+
             {/* Emergency Contact */}
             <Input
               label="Emergency Family Phone"
@@ -172,7 +182,6 @@ const RegisterPage = () => {
               icon={FaPhoneAlt}
               value={formData.emergency_contact}
               onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })}
-              required
             />
 
             <Button type="submit" variant="mint" size="lg" fullWidth loading={loading} className="py-2.5 font-bold text-xs rounded-xl mt-2">

@@ -39,28 +39,37 @@ const PatientProfile = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   const [profile, setProfile] = useState({
-    full_name: user?.name || user?.first_name || user?.username || 'Ramesh Kumar',
-    phone: user?.phone || user?.phone_number || '+91 98765 43210',
-    email: user?.email || 'ramesh_kumar@sevahealth.org',
-    date_of_birth: '1992-06-15',
-    gender: 'Male',
-    height_cm: '172',
-    weight_kg: '68',
-    blood_group: 'O+',
-    language_preference: 'Hindi',
-    emergency_contact: '+91 98123 45678',
-    village: 'Sundarpur Village, Dist. Varanasi',
-    allergies: 'Penicillin allergy',
+    full_name: '',
+    phone: '',
+    email: '',
+    date_of_birth: '',
+    gender: '',
+    height_cm: '',
+    weight_kg: '',
+    blood_group: '',
+    language_preference: '',
+    emergency_contact: '',
+    village: '',
+    allergies: '',
   });
 
-  // Calculate live age from Date of Birth
+  // Calculate dynamic birthday-aware age from Date of Birth
   const calculateAge = (dobString) => {
     if (!dobString) return null;
-    const birthDate = new Date(dobString);
+    const parts = String(dobString).trim().split('-');
+    if (parts.length !== 3) return null;
+    const birthYear = parseInt(parts[0], 10);
+    const birthMonth = parseInt(parts[1], 10);
+    const birthDay = parseInt(parts[2], 10);
+    if (isNaN(birthYear) || isNaN(birthMonth) || isNaN(birthDay)) return null;
+
     const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1; // 1-12
+    const currentDay = today.getDate(); // 1-31
+
+    let age = currentYear - birthYear;
+    if (currentMonth < birthMonth || (currentMonth === birthMonth && currentDay < birthDay)) {
       age--;
     }
     return age >= 0 ? age : null;
@@ -70,7 +79,7 @@ const PatientProfile = () => {
   const calculateBMI = (weightKg, heightCm) => {
     const w = parseFloat(weightKg);
     const h = parseFloat(heightCm);
-    if (!w || !h || h <= 0) return { bmi: null, category: '' };
+    if (!w || !h || h <= 0 || w <= 0) return { bmi: null, category: '' };
     const heightM = h / 100;
     const bmiVal = (w / (heightM * heightM)).toFixed(1);
     let category = '';
@@ -99,21 +108,20 @@ const PatientProfile = () => {
         const res = await api.get('/api/auth/profile/');
         if (res.data) {
           const data = res.data;
-          setProfile((prev) => ({
-            ...prev,
-            full_name: data.first_name || user?.name || user?.first_name || user?.username || prev.full_name,
-            phone: data.phone_number || user?.phone || user?.phone_number || prev.phone,
-            email: data.email || user?.email || prev.email,
-            date_of_birth: data.date_of_birth || prev.date_of_birth,
-            gender: data.gender === 'F' ? 'Female' : data.gender === 'O' ? 'Other' : 'Male',
-            height_cm: data.height_cm ? String(data.height_cm) : prev.height_cm,
-            weight_kg: data.weight_kg ? String(data.weight_kg) : prev.weight_kg,
-            blood_group: data.blood_group || prev.blood_group,
-            language_preference: 'Hindi',
-            emergency_contact: data.emergency_contact_number || prev.emergency_contact,
-            village: data.village_town || data.address || prev.village,
-            allergies: prev.allergies,
-          }));
+          setProfile({
+            full_name: data.full_name || (data.first_name ? `${data.first_name} ${data.last_name || ''}`.trim() : '') || user?.name || user?.username || '',
+            phone: data.phone_number || user?.phone_number || user?.phone || '',
+            email: data.email || user?.email || '',
+            date_of_birth: data.date_of_birth || '',
+            gender: data.gender === 'F' ? 'Female' : data.gender === 'O' ? 'Other' : (data.gender === 'M' ? 'Male' : (data.gender || '')),
+            height_cm: (data.height_cm !== null && data.height_cm !== undefined && data.height_cm !== '') ? String(data.height_cm) : '',
+            weight_kg: (data.weight_kg !== null && data.weight_kg !== undefined && data.weight_kg !== '') ? String(data.weight_kg) : '',
+            blood_group: data.blood_group || '',
+            language_preference: data.preferred_language || 'English',
+            emergency_contact: data.emergency_contact_number || '',
+            village: data.village_town || data.address || '',
+            allergies: data.allergies || '',
+          });
         }
       } catch (err) {
         console.error('Failed to load profile from backend:', err);
@@ -133,17 +141,36 @@ const PatientProfile = () => {
       phone_number: profile.phone,
       email: profile.email,
       date_of_birth: profile.date_of_birth ? profile.date_of_birth : null,
-      gender: profile.gender === 'Female' ? 'F' : profile.gender === 'Other' ? 'O' : 'M',
-      height_cm: profile.height_cm ? parseFloat(profile.height_cm) : null,
-      weight_kg: profile.weight_kg ? parseFloat(profile.weight_kg) : null,
-      blood_group: profile.blood_group,
-      address: profile.village,
-      village_town: profile.village,
-      emergency_contact_number: profile.emergency_contact,
+      gender: profile.gender === 'Female' ? 'F' : profile.gender === 'Other' ? 'O' : (profile.gender === 'Male' ? 'M' : ''),
+      height_cm: profile.height_cm && !isNaN(parseFloat(profile.height_cm)) ? parseFloat(profile.height_cm) : null,
+      weight_kg: profile.weight_kg && !isNaN(parseFloat(profile.weight_kg)) ? parseFloat(profile.weight_kg) : null,
+      blood_group: profile.blood_group || '',
+      address: profile.village || '',
+      village_town: profile.village || '',
+      emergency_contact_number: profile.emergency_contact || '',
+      preferred_language: profile.language_preference || 'English',
+      allergies: profile.allergies || '',
     };
 
     try {
-      await api.put('/api/auth/profile/', profilePayload).catch(() => {});
+      const res = await api.put('/api/auth/profile/', profilePayload);
+      if (res.data) {
+        const data = res.data;
+        setProfile({
+          full_name: data.full_name || (data.first_name ? `${data.first_name} ${data.last_name || ''}`.trim() : '') || profile.full_name,
+          phone: data.phone_number || profile.phone,
+          email: data.email || profile.email,
+          date_of_birth: data.date_of_birth || '',
+          gender: data.gender === 'F' ? 'Female' : data.gender === 'O' ? 'Other' : (data.gender === 'M' ? 'Male' : (data.gender || '')),
+          height_cm: (data.height_cm !== null && data.height_cm !== undefined && data.height_cm !== '') ? String(data.height_cm) : '',
+          weight_kg: (data.weight_kg !== null && data.weight_kg !== undefined && data.weight_kg !== '') ? String(data.weight_kg) : '',
+          blood_group: data.blood_group || '',
+          language_preference: data.preferred_language || profile.language_preference,
+          emergency_contact: data.emergency_contact_number || '',
+          village: data.village_town || data.address || '',
+          allergies: data.allergies || '',
+        });
+      }
 
       if (updateUser) {
         updateUser({
@@ -235,12 +262,12 @@ const PatientProfile = () => {
             <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-[#1E293B] rounded-2xl border border-slate-100 dark:border-slate-700/80">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-xl bg-health-100 dark:bg-health-950 text-health-700 dark:text-health-300 flex items-center justify-center font-bold text-lg">
-                  {profile.full_name.charAt(0)}
+                  {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : 'P'}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">{profile.full_name}</h3>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">{profile.full_name || 'Patient'}</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Patient ID: SH-89421 • {computedAge ? `${computedAge} Years Old` : 'Age Verified'}
+                    Patient ID: SH-{user?.id ? String(user.id).padStart(5, '0') : '89421'} • {computedAge !== null ? `${computedAge} Years Old` : 'Age Not Provided'}
                   </p>
                 </div>
               </div>
@@ -257,7 +284,7 @@ const PatientProfile = () => {
                   <FaHeartbeat className="text-teal-600 text-sm" />
                   <span>Clinical Vitals & Prescription Metrics</span>
                 </span>
-                {computedBMI.bmi && (
+                {computedBMI.bmi ? (
                   <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
                     computedBMI.category === 'Normal Weight'
                       ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
@@ -267,6 +294,10 @@ const PatientProfile = () => {
                   }`}>
                     BMI: {computedBMI.bmi} ({computedBMI.category})
                   </span>
+                ) : (
+                  <span className="text-[11px] text-slate-400 font-medium italic">
+                    Enter Height & Weight to calculate BMI
+                  </span>
                 )}
               </div>
 
@@ -274,21 +305,21 @@ const PatientProfile = () => {
                 <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                   <span className="text-slate-400 font-semibold block text-[10px] uppercase">Age (Calculated)</span>
                   <span className="text-sm font-black text-slate-800 dark:text-slate-100">
-                    {computedAge !== null ? `${computedAge} Years` : 'Not Set'}
+                    {computedAge !== null ? `${computedAge} Years` : 'Not provided'}
                   </span>
                 </div>
 
                 <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                   <span className="text-slate-400 font-semibold block text-[10px] uppercase">Body Weight</span>
                   <span className="text-sm font-black text-slate-800 dark:text-slate-100">
-                    {profile.weight_kg ? `${profile.weight_kg} kg` : 'Not Set'}
+                    {profile.weight_kg ? `${profile.weight_kg} kg` : 'Not provided'}
                   </span>
                 </div>
 
                 <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                   <span className="text-slate-400 font-semibold block text-[10px] uppercase">Height</span>
                   <span className="text-sm font-black text-slate-800 dark:text-slate-100">
-                    {profile.height_cm ? `${profile.height_cm} cm` : 'Not Set'}
+                    {profile.height_cm ? `${profile.height_cm} cm` : 'Not provided'}
                   </span>
                 </div>
 
@@ -296,7 +327,7 @@ const PatientProfile = () => {
                   <span className="text-slate-400 font-semibold block text-[10px] uppercase">Blood Group</span>
                   <span className="text-sm font-black text-rose-600 dark:text-rose-400 flex items-center space-x-1">
                     <FaTint className="text-xs" />
-                    <span>{profile.blood_group || 'O+'}</span>
+                    <span>{profile.blood_group || 'Not provided'}</span>
                   </span>
                 </div>
               </div>
@@ -309,7 +340,7 @@ const PatientProfile = () => {
                   <FaUser className="text-slate-400" />
                   <span>Full Name</span>
                 </span>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.full_name}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.full_name || 'Not provided'}</p>
               </div>
 
               <div className="p-4 rounded-2xl bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-700/80 space-y-1">
@@ -317,7 +348,7 @@ const PatientProfile = () => {
                   <FaPhone className="text-slate-400" />
                   <span>Phone Number</span>
                 </span>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.phone}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.phone || 'Not provided'}</p>
               </div>
 
               <div className="p-4 rounded-2xl bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-700/80 space-y-1">
@@ -325,7 +356,7 @@ const PatientProfile = () => {
                   <FaEnvelope className="text-slate-400" />
                   <span>Email Address</span>
                 </span>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.email}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.email || 'Not provided'}</p>
               </div>
 
               <div className="p-4 rounded-2xl bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-700/80 space-y-1">
@@ -333,7 +364,7 @@ const PatientProfile = () => {
                   <FaMapMarkerAlt className="text-slate-400" />
                   <span>Village / Residence Address</span>
                 </span>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.village}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.village || 'Not provided'}</p>
               </div>
 
               <div className="p-4 rounded-2xl bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-700/80 space-y-1">
@@ -342,7 +373,7 @@ const PatientProfile = () => {
                   <span>Date of Birth & Age</span>
                 </span>
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                  {profile.date_of_birth || '1992-06-15'} {computedAge ? `(${computedAge} yrs)` : ''}
+                  {profile.date_of_birth ? `${profile.date_of_birth} ${computedAge !== null ? `(${computedAge} yrs)` : ''}` : 'Not provided'}
                 </p>
               </div>
 
@@ -351,7 +382,7 @@ const PatientProfile = () => {
                   <FaUser className="text-slate-400" />
                   <span>Gender</span>
                 </span>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.gender}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.gender || 'Not provided'}</p>
               </div>
 
               <div className="p-4 rounded-2xl bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-700/80 space-y-1">
@@ -359,7 +390,7 @@ const PatientProfile = () => {
                   <FaLanguage className="text-slate-400" />
                   <span>Preferred Language</span>
                 </span>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.language_preference}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.language_preference || 'Not provided'}</p>
               </div>
 
               <div className="p-4 rounded-2xl bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-700/80 space-y-1">
@@ -367,7 +398,7 @@ const PatientProfile = () => {
                   <FaPhoneAlt className="text-slate-400" />
                   <span>Emergency Contact Phone</span>
                 </span>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.emergency_contact}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{profile.emergency_contact || 'Not provided'}</p>
               </div>
             </div>
 
@@ -452,7 +483,7 @@ const PatientProfile = () => {
                 <Input
                   label="Height (in cm)"
                   type="number"
-                  placeholder="e.g. 172"
+                  placeholder="Not provided"
                   icon={FaRulerVertical}
                   value={profile.height_cm}
                   onChange={(e) => setProfile({ ...profile, height_cm: e.target.value })}
@@ -460,7 +491,7 @@ const PatientProfile = () => {
                 <Input
                   label="Weight (in kg)"
                   type="number"
-                  placeholder="e.g. 68"
+                  placeholder="Not provided"
                   icon={FaWeightHanging}
                   value={profile.weight_kg}
                   onChange={(e) => setProfile({ ...profile, weight_kg: e.target.value })}
@@ -474,6 +505,7 @@ const PatientProfile = () => {
                     onChange={(e) => setProfile({ ...profile, blood_group: e.target.value })}
                     className="w-full py-3 px-4 text-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1E293B] text-slate-800 dark:text-slate-100 focus:outline-none focus:border-health-500 dark:focus:border-health-400 font-medium"
                   >
+                    <option value="">Select Blood Group (Not provided)</option>
                     <option value="O+">O Positive (O+)</option>
                     <option value="O-">O Negative (O-)</option>
                     <option value="A+">A Positive (A+)</option>
@@ -495,7 +527,6 @@ const PatientProfile = () => {
                   icon={FaCalendarAlt}
                   value={profile.date_of_birth}
                   onChange={(e) => setProfile({ ...profile, date_of_birth: e.target.value })}
-                  required
                 />
                 {computedAge !== null && (
                   <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 mt-1 block">
@@ -513,6 +544,7 @@ const PatientProfile = () => {
                   onChange={(e) => setProfile({ ...profile, gender: e.target.value })}
                   className="w-full py-3 px-4 text-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1E293B] text-slate-800 dark:text-slate-100 focus:outline-none focus:border-health-500 dark:focus:border-health-400 font-medium"
                 >
+                  <option value="">Select Gender (Not provided)</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
@@ -528,11 +560,15 @@ const PatientProfile = () => {
                   onChange={(e) => setProfile({ ...profile, language_preference: e.target.value })}
                   className="w-full py-3 px-4 text-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1E293B] text-slate-800 dark:text-slate-100 focus:outline-none focus:border-health-500 dark:focus:border-health-400 font-medium"
                 >
-                  <option value="Hindi">Hindi</option>
-                  <option value="Punjabi">Punjabi</option>
-                  <option value="Bengali">Bengali</option>
-                  <option value="Telugu">Telugu</option>
                   <option value="English">English</option>
+                  <option value="Hindi">Hindi</option>
+                  <option value="Telugu">Telugu</option>
+                  <option value="Marathi">Marathi</option>
+                  <option value="Bengali">Bengali</option>
+                  <option value="Punjabi">Punjabi</option>
+                  <option value="Tamil">Tamil</option>
+                  <option value="Gujarati">Gujarati</option>
+                  <option value="Kannada">Kannada</option>
                 </select>
               </div>
             </div>
@@ -542,7 +578,6 @@ const PatientProfile = () => {
               icon={FaPhoneAlt}
               value={profile.emergency_contact}
               onChange={(e) => setProfile({ ...profile, emergency_contact: e.target.value })}
-              required
             />
 
             <div className="space-y-1.5">

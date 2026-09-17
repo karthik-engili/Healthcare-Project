@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import ProfileCompletionModal from '../../components/common/ProfileCompletionModal';
 import api from '../../api/axios';
 import { 
   FaRobot, 
@@ -30,11 +31,14 @@ import {
 
 const PatientDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [todaySchedule, setTodaySchedule] = useState(null);
   const [recentDocs, setRecentDocs] = useState([]);
   const [recommendations, setRecommendations] = useState(null);
   const [dailyTips, setDailyTips] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [missingFields, setMissingFields] = useState([]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -60,6 +64,37 @@ const PatientDashboard = () => {
         if (tipsRes.status === 'fulfilled') {
           setDailyTips(tipsRes.value.data.tips || []);
         }
+
+        // Check post-login profile completion eligibility
+        const isEligible = sessionStorage.getItem('profile_popup_eligible') === 'true';
+        const isDismissed = sessionStorage.getItem('profile_popup_dismissed') === 'true';
+
+        if (isEligible && !isDismissed) {
+          try {
+            const pRes = await api.get('/api/auth/profile/');
+            if (pRes.data) {
+              const p = pRes.data;
+              const missing = [];
+              if (!p.full_name || p.full_name === 'Patient') missing.push('Full Name');
+              if (!p.date_of_birth) missing.push('Date of Birth');
+              if (!p.gender) missing.push('Gender');
+              if (!p.phone_number) missing.push('Phone Number');
+              if (!p.village_town && !p.address) missing.push('Village / Residence Address');
+              if (p.height_cm === null || p.height_cm === undefined || p.height_cm === '') missing.push('Height');
+              if (p.weight_kg === null || p.weight_kg === undefined || p.weight_kg === '') missing.push('Weight');
+
+              if (missing.length > 0) {
+                setMissingFields(missing);
+                setShowCompletionModal(true);
+              } else {
+                // Profile is complete!
+                sessionStorage.removeItem('profile_popup_eligible');
+              }
+            }
+          } catch (pErr) {
+            console.warn('Profile completion check error:', pErr);
+          }
+        }
       } catch (err) {
         console.error('Error loading patient dashboard:', err);
       } finally {
@@ -69,6 +104,19 @@ const PatientDashboard = () => {
 
     fetchDashboardData();
   }, []);
+
+  const handleCloseModal = () => {
+    setShowCompletionModal(false);
+    sessionStorage.setItem('profile_popup_dismissed', 'true');
+    sessionStorage.removeItem('profile_popup_eligible');
+  };
+
+  const handleUpdateProfile = () => {
+    setShowCompletionModal(false);
+    sessionStorage.setItem('profile_popup_dismissed', 'true');
+    sessionStorage.removeItem('profile_popup_eligible');
+    navigate('/patient/profile?mode=edit');
+  };
 
   const getDisplayName = () => {
     if (user?.name && typeof user.name === 'string' && isNaN(Number(user.name)) && user.name.trim() !== '') {
@@ -489,6 +537,13 @@ const PatientDashboard = () => {
           </a>
         </div>
       </div>
+
+      <ProfileCompletionModal
+        isOpen={showCompletionModal}
+        missingFields={missingFields}
+        onClose={handleCloseModal}
+        onUpdate={handleUpdateProfile}
+      />
 
     </div>
   );

@@ -59,6 +59,7 @@ export const AuthProvider = ({ children }) => {
       setRole(credentials.role || 'patient');
       localStorage.setItem('user_info', JSON.stringify(userInfo));
       localStorage.setItem('user_role', credentials.role || 'patient');
+      sessionStorage.setItem('profile_popup_eligible', 'true');
       setLoading(false);
       return { success: true };
     } catch (err) {
@@ -103,6 +104,14 @@ export const AuthProvider = ({ children }) => {
         email: userData.email || '',
         role: userData.role || 'patient',
         phone_number: userData.phone || userData.phone_number || '',
+        first_name: userData.first_name || '',
+        last_name: userData.last_name || '',
+        date_of_birth: userData.date_of_birth || null,
+        gender: userData.gender || '',
+        address: userData.address || userData.village || '',
+        village_town: userData.village || userData.address || '',
+        emergency_contact_number: userData.emergency_contact || userData.emergency_contact_number || '',
+        preferred_language: userData.language_preference || userData.preferred_language || 'English',
       };
       const response = await api.post('/api/auth/register/', payload);
       if (response.data?.access) {
@@ -150,6 +159,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_info');
     localStorage.removeItem('user_role');
+    sessionStorage.removeItem('profile_popup_eligible');
+    sessionStorage.removeItem('profile_popup_dismissed');
     setUser(null);
     setRole('patient');
   };

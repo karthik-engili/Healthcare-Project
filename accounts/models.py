@@ -51,6 +51,8 @@ class PatientProfile(models.Model):
     state = models.CharField(max_length=100, blank=True)
     emergency_contact_name = models.CharField(max_length=100, blank=True)
     emergency_contact_number = models.CharField(max_length=15, blank=True)
+    allergies = models.TextField(blank=True, help_text="Known medical allergies")
+    medical_conditions = models.TextField(blank=True, help_text="Known medical conditions")
 
     @property
     def age(self):
