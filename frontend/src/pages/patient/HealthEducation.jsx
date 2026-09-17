@@ -71,7 +71,8 @@ const HealthEducation = () => {
       }
     }
 
-    const audioUrl = `http://127.0.0.1:8000/api/education/articles/${article.id}/audio/?lang=${lang}`;
+    const baseUrl = import.meta.env.VITE_API_URL || '';
+    const audioUrl = `${baseUrl}/api/education/articles/${article.id}/audio/?lang=${lang}`;
     const newAudio = new Audio(audioUrl);
     setPlayingId(article.id);
     setAudioObj(newAudio);

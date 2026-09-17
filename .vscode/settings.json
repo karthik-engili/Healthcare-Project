@@ -5,7 +5,8 @@
     "python.terminal.activateEnvironment": true,
     "python.analysis.extraPaths": [
         "${workspaceFolder}/venv/Lib/site-packages",
-        "${workspaceFolder}"
+        "${workspaceFolder}",
+        "C:/Users/karth/AppData/Roaming/Python/Python314/site-packages"
     ],
     "python.analysis.diagnosticSeverityOverrides": {
         "reportMissingImports": "none",
