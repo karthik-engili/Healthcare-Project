@@ -27,11 +27,30 @@ import {
 } from 'react-icons/fa';
 
 const AIChatAssistant = () => {
-  const [messages, setMessages] = useState([
+  const getWelcomingMessage = (selectedLang) => {
+    const l = (selectedLang || 'en').split('-')[0].toLowerCase();
+    switch (l) {
+      case 'te':
+        return 'నమస్కారం! నేను మీ SevaHealth AI సహాయకుడిని. మీ ప్రిస్క్రిప్షన్, మందుల వేళలు లేదా ఆరోగ్య సందేహాల గురించి నన్ను అడగండి.';
+      case 'hi':
+        return 'नमस्ते! मैं आपका SevaHealth AI सहायक हूँ। आप अपनी दवाइयों, पर्चे या स्वास्थ्य से जुड़े किसी भी सवाल के बारे में मुझसे पूछ सकते हैं।';
+      case 'mr':
+        return 'नमस्कार! मी तुमचा SevaHealth AI सहाय्यक आहे. औषधांची वेळ, प्रिस्क्रिप्शन किंवा आरोग्याविषयी कोणत्याही प्रश्नांसाठी मला विचारा.';
+      default:
+        return 'Hello! I am your SevaHealth AI Assistant. Feel free to ask me anything about your medications, prescription dosages, or health queries.';
+    }
+  };
+
+  // Preferred Language: 'en', 'te', 'hi', 'mr'
+  const [lang, setLang] = useState(() => {
+    return localStorage.getItem('preferred_language') || 'en';
+  });
+
+  const [messages, setMessages] = useState(() => [
     {
       id: 1,
       sender: 'ai',
-      text: 'Namaste! Main aapka SevaHealth AI Sahayak hoon. Aap mujhse kisi bhi tablet, prescription ya swasthya samasya ke baare mein pooch sakte hain. (Telugu / Hindi / Marathi / English)',
+      text: getWelcomingMessage(localStorage.getItem('preferred_language') || 'en'),
     },
   ]);
 
@@ -49,11 +68,6 @@ const AIChatAssistant = () => {
   const [imageAnalysisError, setImageAnalysisError] = useState(null);
   const [lastImageContext, setLastImageContext] = useState(null);
   const [isAnalysisCameraOpen, setIsAnalysisCameraOpen] = useState(false);
-
-  // Preferred Language: 'en', 'te', 'hi', 'mr'
-  const [lang, setLang] = useState(() => {
-    return localStorage.getItem('preferred_language') || 'en';
-  });
 
   // Audio Playback states
   const [playingMsgId, setPlayingMsgId] = useState(null);
@@ -458,6 +472,16 @@ const AIChatAssistant = () => {
                 onClick={() => {
                   setLang(l.code);
                   localStorage.setItem('preferred_language', l.code);
+                  setMessages(prev => {
+                    if (prev.length <= 1) {
+                      return [{
+                        id: 1,
+                        sender: 'ai',
+                        text: getWelcomingMessage(l.code),
+                      }];
+                    }
+                    return prev;
+                  });
                 }}
                 className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
                   lang === l.code

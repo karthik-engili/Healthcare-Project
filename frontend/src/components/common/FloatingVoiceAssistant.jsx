@@ -25,15 +25,16 @@ const FloatingVoiceAssistant = ({ prescriptionContext = null }) => {
   const audioPlayerRef = useRef(null);
 
   const getGreetingForLang = (currentLang) => {
-    switch (currentLang) {
-      case 'te-IN':
-        return 'నమస్కారం! నేను మీ SevaHealth AI వాయిస్ సహాయకుడిని. మీ మందుల మోతాదు (Dosage), సమయాలు మరియు ఆరోగ్య సమస్యల గురించి తెలుగులో అడగండి.';
-      case 'mr-IN':
-        return 'नमस्कार! मी तुमचा SevaHealth AI व्हॉइस सहाय्यक आहे. औषधांची वेळ, प्रमाण आणि आरोग्य समस्यांबद्दल मला मराठीत विचारा.';
-      case 'hi-IN':
-        return 'नमस्ते! मैं आपका SevaHealth AI वॉयस सहायक हूँ। आप अपनी दवाइयों, खुराक और समय के बारे में मुझसे हिंदी में पूछ सकते हैं।';
+    const clean = (currentLang || 'en').split('-')[0].toLowerCase();
+    switch (clean) {
+      case 'te':
+        return 'నమస్కారం! నేను మీ SevaHealth AI వాయిస్ సహాయకుడిని. మీ మందుల మోతాదు (Dosage), సమయాలు మరియు ఆరోగ్య సమస్యల గురించి నన్ను అడగండి.';
+      case 'mr':
+        return 'नमस्कार! मी तुमचा SevaHealth AI व्हॉइस सहाय्यक आहे. औषधांची वेळ, प्रमाण आणि आरोग्य समस्यांबद्दल मला विचारा.';
+      case 'hi':
+        return 'नमस्ते! मैं आपका SevaHealth AI वॉयस सहायक हूँ। आप अपनी दवाइयों, खुराक और समय के बारे में मुझसे पूछ सकते हैं।';
       default:
-        return 'Hello! I am your SevaHealth AI Voice Assistant. Ask me about your prescribed medicine timings, dosages, and health queries in English, Telugu, Hindi, or Marathi.';
+        return 'Hello! I am your SevaHealth AI Voice Assistant. Ask me about your prescribed medicine timings, dosages, and health queries.';
     }
   };
 
@@ -46,7 +47,7 @@ const FloatingVoiceAssistant = ({ prescriptionContext = null }) => {
     },
   ]);
 
-  // Sync with global language changes
+  // Sync with global language changes (keep only one single welcoming message)
   useEffect(() => {
     const handleLangChange = (e) => {
       const newLang = e.detail?.lang;
@@ -54,19 +55,15 @@ const FloatingVoiceAssistant = ({ prescriptionContext = null }) => {
         setLang(newLang);
         setMessages((prev) => {
           const greeting = getGreetingForLang(newLang);
-          // Check if last message is already greeting in this language
-          if (prev.length > 0 && prev[prev.length - 1].text === greeting) {
-            return prev;
-          }
-          return [
-            ...prev,
-            {
-              id: Date.now(),
+          if (prev.length <= 1) {
+            return [{
+              id: 1,
               sender: 'ai',
               text: greeting,
               time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            },
-          ];
+            }];
+          }
+          return prev;
         });
       }
     };
@@ -135,7 +132,12 @@ const FloatingVoiceAssistant = ({ prescriptionContext = null }) => {
         text: ctxText,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
-      setMessages(prev => [...prev, contextMsg]);
+      setMessages(prev => {
+        if (prev.length <= 1) {
+          return [contextMsg];
+        }
+        return prev;
+      });
       setIsOpen(true);
     }
   }, [prescriptionContext]);
